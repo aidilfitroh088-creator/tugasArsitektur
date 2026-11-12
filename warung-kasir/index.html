@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Warung Kasir</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--wall:#d9eddc;--card:#fbfff9;--ink:#17261d;--mute:#5b6e62;--green:#1f6b45;--sachet:#f4c430;--grape:#6b3fa0;--red:#b3261e;--line:#b9d3bf;color-scheme:light;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--wall:#14201a;--card:#1d2d24;--ink:#eaf5ec;--mute:#9db5a4;--green:#4fc98a;--sachet:#f4c430;--grape:#b794ee;--red:#ff8a80;--line:#33493b;color-scheme:dark}}
+:root[data-theme="dark"]{--wall:#14201a;--card:#1d2d24;--ink:#eaf5ec;--mute:#9db5a4;--green:#4fc98a;--sachet:#f4c430;--grape:#b794ee;--red:#ff8a80;--line:#33493b;color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--wall);color:var(--ink);font-family:"Bricolage Grotesque",system-ui,-apple-system,"Segoe UI",sans-serif;font-size:16px;line-height:1.45}
+.wrap{max-width:980px;margin:0 auto;padding:16px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+h1{font-size:28px;font-weight:800;margin:0;letter-spacing:-.5px}
+h1 input{font:inherit;color:inherit;background:transparent;border:0;border-bottom:2px dashed var(--line);width:min(70vw,360px);padding:0}
+nav{display:flex;gap:6px;background:var(--card);padding:4px;border-radius:12px;border:1px solid var(--line)}
+nav button{font:inherit;font-weight:600;border:0;background:transparent;color:var(--mute);padding:8px 16px;border-radius:9px;cursor:pointer}
+nav button.on{background:var(--green);color:#fff}
+button:focus-visible,input:focus-visible{outline:3px solid var(--grape);outline-offset:2px}
+.grid{display:grid;grid-template-columns:1fr 340px;gap:16px}
+@media(max-width:800px){.grid{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
+input[type=text],input[type=number],input[type=search]{font:inherit;color:var(--ink);background:var(--wall);border:1px solid var(--line);border-radius:9px;padding:9px 11px;width:100%}
+.items{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-top:12px}
+.item{font:inherit;text-align:left;color:var(--ink);background:var(--card);border:1px solid var(--line);border-left:6px solid var(--sachet);border-radius:10px;padding:10px;cursor:pointer}
+.item:active{transform:scale(.97)}
+.item b{display:block}
+.item small{color:var(--mute)}
+.item.low{border-left-color:var(--red)}
+.item[disabled]{opacity:.45;cursor:not-allowed}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px dashed var(--line)}
+.qty{display:flex;align-items:center;gap:6px}
+.qty button,.sm{font:inherit;font-weight:700;width:30px;height:30px;border-radius:8px;border:1px solid var(--line);background:var(--wall);color:var(--ink);cursor:pointer}
+.big{font-size:26px;font-weight:800}
+.btn{font:inherit;font-weight:700;border:0;border-radius:10px;padding:12px 16px;background:var(--green);color:#fff;cursor:pointer;width:100%;margin-top:10px}
+.btn.alt{background:var(--wall);color:var(--ink);border:1px solid var(--line);width:auto;padding:8px 12px;margin:0}
+.btn.danger{background:transparent;color:var(--red);border:1px solid var(--red);width:auto;padding:8px 12px}
+.muted{color:var(--mute)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:14px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}
+.stat .big{display:block}
+.tag{display:inline-block;background:var(--sachet);color:#2a2100;border-radius:6px;padding:1px 8px;font-size:13px;font-weight:600}
+.tag.red{background:var(--red);color:#fff}
+.form{display:grid;grid-template-columns:2fr 1fr 1fr 1fr auto;gap:8px;margin-bottom:12px}
+@media(max-width:700px){.form{grid-template-columns:1fr 1fr}}
+.table{overflow-x:auto}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--wall);padding:10px 18px;border-radius:10px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .2s}
+.toast.show{opacity:1}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+<h1><input id="shop" aria-label="Nama warung" value="Warung Saya"></h1>
+<nav id="nav"><button data-t="kasir" class="on">Kasir</button><button data-t="stok">Stok</button><button data-t="laporan">Laporan</button></nav>
+</header>
+<main id="view"></main>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+const KEY="warung-kasir-v1";
+const rp=n=>"Rp"+Math.round(n).toLocaleString("id-ID");
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const seed=[["Kopi sachet",1000,1500,60],["Susu kental sachet",1500,2000,40],["Teh celup",500,1000,50],["Mi instan",2800,3500,30],["Sabun mandi",2500,3500,15],["Sampo sachet",400,500,80],["Gula 1/4 kg",4500,5500,12],["Air galon isi ulang",4000,6000,10]].map((a,i)=>({id:i+1,name:a[0],buy:a[1],sell:a[2],stock:a[3]}));
+let S={shop:"Warung Saya",products:[],sales:[]};
+let tab="kasir",cart={},q="",pay="";
+async function api(a,body){const r=await fetch("api.php?a="+a,{method:body?"POST":"GET",headers:{"Content-Type":"application/json"},body:body?JSON.stringify(body):undefined});if(!r.ok)throw new Error(await r.text());return r.json()}
+let tm;function save(){clearTimeout(tm);tm=setTimeout(()=>api("sync",{shop:S.shop,products:S.products}).catch(()=>toast("Gagal menyimpan ke database")),250)}
+async function init(){try{const d=await api("all");S.shop=d.shop;S.sales=d.sales;if(d.fresh){S.products=seed.map(p=>({...p}));save()}else S.products=d.products;$("shop").value=S.shop;render()}catch(e){$("view").innerHTML='<div class="card"><b>Tidak bisa terhubung ke database.</b><p class="muted">Buka lewat http://warung-kasir.test dan pastikan Apache dan MySQL di Laragon sudah Start.</p></div>'}}
+function toast(m){const t=document.getElementById("toast");t.textContent=m;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),1800)}
+const $=id=>document.getElementById(id);
+$("shop").value=S.shop;
+$("shop").oninput=e=>{S.shop=e.target.value;save()};
+$("nav").onclick=e=>{const b=e.target.closest("button");if(!b)return;tab=b.dataset.t;[...$("nav").children].forEach(x=>x.classList.toggle("on",x===b));render()};
+
+function total(){return Object.entries(cart).reduce((s,[id,n])=>s+n*S.products.find(p=>p.id==id).sell,0)}
+function render(){tab==="kasir"?kasir():tab==="stok"?stok():laporan()}
+
+function kasir(){
+ const list=S.products.filter(p=>p.name.toLowerCase().includes(q.toLowerCase()));
+ const ids=Object.keys(cart);
+ const t=total(),paid=Number(pay)||0;
+ $("view").innerHTML=`<div class="grid"><section>
+ <input type="search" id="q" placeholder="Cari barang…" value="${esc(q)}" aria-label="Cari barang">
+ <div class="items">${list.map(p=>`<button class="item ${p.stock<=5?"low":""}" data-add="${p.id}" ${p.stock-(cart[p.id]||0)<=0?"disabled":""}><b>${esc(p.name)}</b>${rp(p.sell)}<br><small>Sisa ${p.stock-(cart[p.id]||0)}</small></button>`).join("")||'<p class="muted">Belum ada barang. Tambahkan di tab Stok.</p>'}</div></section>
+ <aside class="card"><h2 style="margin:0 0 6px;font-size:20px">Belanjaan</h2>
+ ${ids.length?ids.map(id=>{const p=S.products.find(x=>x.id==id);return `<div class="row"><span>${esc(p.name)}<br><small class="muted">${rp(p.sell)}</small></span><span class="qty"><button data-dec="${id}" aria-label="Kurangi">−</button>${cart[id]}<button data-inc="${id}" aria-label="Tambah">+</button></span></div>`}).join(""):'<p class="muted">Ketuk barang di kiri untuk menambah.</p>'}
+ <div class="row"><span>Total</span><span class="big">${rp(t)}</span></div>
+ <label class="muted" for="pay">Uang diterima</label>
+ <input type="number" id="pay" inputmode="numeric" value="${pay}" placeholder="0">
+ <div class="row" style="border:0"><span>Kembalian</span><b style="color:${paid>=t?"var(--green)":"var(--red)"}">${paid>=t?rp(paid-t):"Kurang "+rp(t-paid)}</b></div>
+ <button class="btn" id="done" ${ids.length&&paid>=t?"":"disabled"}>Simpan penjualan</button>
+ ${ids.length?'<button class="btn alt" id="clr" style="margin-top:8px">Kosongkan</button>':""}
+ </aside></div>`;
+ const qi=$("q");qi.oninput=e=>{q=e.target.value;const pos=e.target.selectionStart;kasir();const n=$("q");n.focus();n.setSelectionRange(pos,pos)};
+ document.querySelectorAll("[data-add]").forEach(b=>b.onclick=()=>{cart[b.dataset.add]=(cart[b.dataset.add]||0)+1;kasir()});
+ document.querySelectorAll("[data-inc]").forEach(b=>b.onclick=()=>{const p=S.products.find(x=>x.id==b.dataset.inc);if(cart[p.id]<p.stock)cart[p.id]++;kasir()});
+ document.querySelectorAll("[data-dec]").forEach(b=>b.onclick=()=>{const id=b.dataset.dec;if(--cart[id]<=0)delete cart[id];kasir()});
+ $("pay").oninput=e=>{pay=e.target.value;const pos=e.target.selectionStart;kasir();const n=$("pay");n.focus();n.setSelectionRange(pos,pos)};
+ if($("clr"))$("clr").onclick=()=>{cart={};pay="";kasir()};
+ $("done").onclick=()=>{
+  const items=ids.map(id=>{const p=S.products.find(x=>x.id==id);p.stock-=cart[id];return{id:p.id,name:p.name,qty:cart[id],sell:p.sell,buy:p.buy}});
+  const sale={t:Date.now(),items,total:t};S.sales.push(sale);api("sale",sale).catch(()=>toast("Gagal menyimpan transaksi"));save();cart={};pay="";toast("Penjualan disimpan");kasir()};
+}
+
+function stok(){
+ $("view").innerHTML=`<div class="card"><h2 style="margin:0 0 10px;font-size:20px">Tambah barang</h2>
+ <div class="form"><input type="text" id="n" placeholder="Nama barang" aria-label="Nama barang"><input type="number" id="b" placeholder="Harga beli" aria-label="Harga beli"><input type="number" id="s" placeholder="Harga jual" aria-label="Harga jual"><input type="number" id="k" placeholder="Stok" aria-label="Stok"><button class="btn" style="margin:0;width:auto" id="add">Simpan</button></div>
+ <div class="table">${S.products.map(p=>`<div class="row"><span><b>${esc(p.name)}</b> ${p.stock<=5?'<span class="tag red">Menipis</span>':""}<br><small class="muted">Beli ${rp(p.buy)} · Jual ${rp(p.sell)} · Untung ${rp(p.sell-p.buy)}/pcs</small></span>
+ <span class="qty"><button data-m="${p.id}" aria-label="Kurangi stok">−</button><b style="min-width:32px;text-align:center">${p.stock}</b><button data-p="${p.id}" aria-label="Tambah stok">+</button><button class="sm" data-pr="${p.id}" aria-label="Ubah harga jual" title="Ubah harga jual">✎</button><button class="sm" data-d="${p.id}" aria-label="Hapus" style="color:var(--red)">×</button></span></div>`).join("")}</div></div>`;
+ $("add").onclick=()=>{const name=$("n").value.trim(),buy=+$("b").value,sell=+$("s").value,stock=+$("k").value;
+  if(!name||!sell){toast("Isi nama dan harga jual");return}
+  S.products.push({id:Date.now(),name,buy:buy||0,sell,stock:stock||0});save();toast("Barang ditambahkan");stok()};
+ document.querySelectorAll("[data-m]").forEach(b=>b.onclick=()=>{const p=S.products.find(x=>x.id==b.dataset.m);p.stock=Math.max(0,p.stock-1);save();stok()});
+ document.querySelectorAll("[data-p]").forEach(b=>b.onclick=()=>{S.products.find(x=>x.id==b.dataset.p).stock++;save();stok()});
+ document.querySelectorAll("[data-pr]").forEach(b=>b.onclick=()=>{const p=S.products.find(x=>x.id==b.dataset.pr);const v=prompt("Harga jual baru untuk "+p.name,p.sell);if(v&&+v>0){p.sell=+v;save();stok()}});
+ document.querySelectorAll("[data-d]").forEach(b=>b.onclick=()=>{const p=S.products.find(x=>x.id==b.dataset.d);if(confirm("Hapus "+p.name+"?")){S.products=S.products.filter(x=>x!==p);save();stok()}});
+}
+
+function laporan(){
+ const d0=new Date();d0.setHours(0,0,0,0);
+ const today=S.sales.filter(s=>s.t>=d0.getTime());
+ const omzet=today.reduce((a,s)=>a+s.total,0);
+ const laba=today.reduce((a,s)=>a+s.items.reduce((x,i)=>x+(i.sell-i.buy)*i.qty,0),0);
+ const cnt={};today.forEach(s=>s.items.forEach(i=>cnt[i.name]=(cnt[i.name]||0)+i.qty));
+ const top=Object.entries(cnt).sort((a,b)=>b[1]-a[1]).slice(0,5);
+ const low=S.products.filter(p=>p.stock<=5);
+ $("view").innerHTML=`<div class="stats"><div class="stat"><span class="muted">Omzet hari ini</span><span class="big">${rp(omzet)}</span></div><div class="stat"><span class="muted">Laba kotor</span><span class="big">${rp(laba)}</span></div><div class="stat"><span class="muted">Transaksi</span><span class="big">${today.length}</span></div></div>
+ <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr))">
+ <div class="card"><h2 style="margin:0 0 6px;font-size:20px">Paling laku</h2>${top.length?top.map(t=>`<div class="row"><span>${esc(t[0])}</span><b>${t[1]} terjual</b></div>`).join(""):'<p class="muted">Belum ada penjualan hari ini.</p>'}</div>
+ <div class="card"><h2 style="margin:0 0 6px;font-size:20px">Perlu belanja</h2>${low.length?low.map(p=>`<div class="row"><span>${esc(p.name)}</span><span class="tag red">Sisa ${p.stock}</span></div>`).join(""):'<p class="muted">Semua stok aman.</p>'}</div>
+ <div class="card"><h2 style="margin:0 0 6px;font-size:20px">Transaksi terakhir</h2>${S.sales.slice(-5).reverse().map(s=>`<div class="row"><span><small class="muted">${new Date(s.t).toLocaleString("id-ID",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})}</small><br>${s.items.map(i=>esc(i.name)+" ×"+i.qty).join(", ")}</span><b>${rp(s.total)}</b></div>`).join("")||'<p class="muted">Belum ada transaksi.</p>'}</div></div>
+ <p style="margin-top:16px"><button class="btn danger" id="rst">Reset semua data</button></p>`;
+ $("rst").onclick=()=>{if(confirm("Hapus semua data dan mulai dari awal?")){api("reset").then(()=>{S={shop:S.shop,products:seed.map(p=>({...p})),sales:[]};save();laporan()})}};
+}
+init();
+</script>
+</body>
+</html>
